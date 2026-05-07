@@ -113,7 +113,9 @@ public class Game1Manager : MonoBehaviour
     if (attentionText == null) return;
 
     bool isFocused = GetFocusState();
-    attentionText.text = isFocused ? "Focused" : "Not Focused";
+    attentionText.text = isFocused
+    ? "✓ Focused"
+    : "! Not Focused";
     }
 
     public bool CanScore()

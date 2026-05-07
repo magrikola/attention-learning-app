@@ -133,8 +133,8 @@ public class Game3Manager : MonoBehaviour
     bool isFocused = GetFocusState();
 
     attentionText.text = isFocused
-        ? "Focused"
-        : "Not Focused";
+    ? "✓ Focused"
+    : "! Not Focused";
 }
 
     void ShowTarget()

@@ -120,9 +120,9 @@ bool GetFocusState()
 
     bool isFocused = GetFocusState();
 
-    attentionText.text = isFocused
-        ? "Focused"
-        : "Not Focused";
+   attentionText.text = isFocused
+    ? "✓ Focused"
+    : "! Not Focused";
 }
     void GenerateNewTask()
     {

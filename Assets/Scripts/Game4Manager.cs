@@ -122,9 +122,9 @@ public class Game4Manager : MonoBehaviour
 
     bool isFocused = GetFocusState();
 
-    focusText.text = isFocused
-        ? "Focused"
-        : "Not Focused";
+   focusText.text = isFocused
+    ? "✓ Focused"
+    : "! Not Focused";
 }
 
     IEnumerator StartNewRound()
