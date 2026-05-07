@@ -102,25 +102,30 @@ public class Game4Manager : MonoBehaviour
     }
 
     bool GetFocusState()
+{
+    if (AttentionSystemManager.Instance != null)
     {
-        if (FakeAttentionManager.Instance == null)
-        {
-            Debug.LogWarning("FakeAttentionManager Instance could not found. Focus default accepted as true.");
-            return true;
-        }
+        return AttentionSystemManager.Instance.GetFocusState();
+    }
 
+    if (FakeAttentionManager.Instance != null)
+    {
         return FakeAttentionManager.Instance.GetFocus();
     }
 
-    void UpdateFocusText()
-    {
-        if (focusText == null) return;
+    return true;
+}
 
-        if (FakeAttentionManager.Instance == null)
-            focusText.text = "Focused";
-        else
-            focusText.text = FakeAttentionManager.Instance.GetFocusText();
-    }
+    void UpdateFocusText()
+{
+    if (focusText == null) return;
+
+    bool isFocused = GetFocusState();
+
+    focusText.text = isFocused
+        ? "Focused"
+        : "Not Focused";
+}
 
     IEnumerator StartNewRound()
     {

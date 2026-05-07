@@ -111,26 +111,31 @@ public class Game3Manager : MonoBehaviour
         }
     }
 
-    bool GetFocusState()
+   bool GetFocusState()
+{
+    if (AttentionSystemManager.Instance != null)
     {
-        if (FakeAttentionManager.Instance == null)
-        {
-            
-            return true;
-        }
+        return AttentionSystemManager.Instance.GetFocusState();
+    }
 
+    if (FakeAttentionManager.Instance != null)
+    {
         return FakeAttentionManager.Instance.GetFocus();
     }
 
-    void UpdateAttentionText()
-    {
-        if (attentionText == null) return;
+    return true;
+}
 
-        if (FakeAttentionManager.Instance == null)
-            attentionText.text = "Focused";
-        else
-            attentionText.text = FakeAttentionManager.Instance.GetFocusText();
-    }
+    void UpdateAttentionText()
+{
+    if (attentionText == null) return;
+
+    bool isFocused = GetFocusState();
+
+    attentionText.text = isFocused
+        ? "Focused"
+        : "Not Focused";
+}
 
     void ShowTarget()
     {

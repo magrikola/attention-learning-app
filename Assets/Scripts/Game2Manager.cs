@@ -100,27 +100,30 @@ public class Game2Manager : MonoBehaviour
         }
     }
 
-    bool GetFocusState()
+bool GetFocusState()
+{
+    if (AttentionSystemManager.Instance != null)
     {
-        if (FakeAttentionManager.Instance == null)
-        {
-            Debug.LogWarning("FakeAttentionManager Instance could not found. Focus default accepted as TRUE.");
-            return true;
-        }
+        return AttentionSystemManager.Instance.GetFocusState();
+    }
 
+    if (FakeAttentionManager.Instance != null)
+    {
         return FakeAttentionManager.Instance.GetFocus();
     }
 
-    void UpdateAttentionText()
-    {
-        if (attentionText == null) return;
+    return true;
+}
+   void UpdateAttentionText()
+{
+    if (attentionText == null) return;
 
-        if (FakeAttentionManager.Instance == null)
-            attentionText.text = "Focused";
-        else
-            attentionText.text = FakeAttentionManager.Instance.GetFocusText();
-    }
+    bool isFocused = GetFocusState();
 
+    attentionText.text = isFocused
+        ? "Focused"
+        : "Not Focused";
+}
     void GenerateNewTask()
     {
         targetColor = colors[Random.Range(0, colors.Length)];

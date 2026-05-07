@@ -96,26 +96,28 @@ public class Game1Manager : MonoBehaviour
 
     bool GetFocusState()
     {
-        if (FakeAttentionManager.Instance == null)
-        {
-            return true;
-        }
+    if (AttentionSystemManager.Instance != null)
+    {
+        return AttentionSystemManager.Instance.GetFocusState();
+    }
 
+    if (FakeAttentionManager.Instance != null)
+    {
         return FakeAttentionManager.Instance.GetFocus();
     }
 
-    void UpdateAttentionText()
-    {
-        if (attentionText == null) return;
+    return true;
+    }
+  void UpdateAttentionText()
+  {
+    if (attentionText == null) return;
 
-        if (FakeAttentionManager.Instance == null)
-            attentionText.text = "Focused";
-        else
-            attentionText.text = FakeAttentionManager.Instance.GetFocusText();
+    bool isFocused = GetFocusState();
+    attentionText.text = isFocused ? "Focused" : "Not Focused";
     }
 
     public bool CanScore()
-    {
+   {
         bool isFocused = GetFocusState();
 
         if (!isFocused)
