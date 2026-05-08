@@ -8,6 +8,10 @@ using System.Collections;
 public class Game1Manager : MonoBehaviour
 {
     public Button playAgainButton;
+    [Header("Result Popup")]
+    public GameObject resultPopup;
+    public TMP_Text resultTitleText;
+    public GameObject targetObject;
 
     private float lastSavedFocusedTime = 0f;
     private float lastSavedUnfocusedTime = 0f;
@@ -49,6 +53,8 @@ public class Game1Manager : MonoBehaviour
     {
         if (playAgainButton != null)
             playAgainButton.gameObject.SetActive(false);
+            if (resultPopup != null)
+    resultPopup.SetActive(false);
 
         if (targetRect != null)
             targetOriginalScale = targetRect.localScale;
@@ -223,6 +229,13 @@ public class Game1Manager : MonoBehaviour
     {
         if (playAgainButton != null)
             playAgainButton.gameObject.SetActive(true);
+        if (targetObject != null)
+            targetObject.SetActive(false);    
+        if (resultPopup != null)
+            resultPopup.SetActive(true);
+
+        if (resultTitleText != null)
+            resultTitleText.text = "Session Complete";
 
         gameEnded = true;
         SaveCurrentGame1Data();
@@ -302,5 +315,9 @@ public class Game1Manager : MonoBehaviour
     public void PlayAgain()
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+    public void BackToGames()
+    {
+    SceneManager.LoadScene("GameSelection");
     }
 }
