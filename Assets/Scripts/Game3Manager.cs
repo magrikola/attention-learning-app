@@ -8,6 +8,9 @@ using UnityEngine.EventSystems;
 public class Game3Manager : MonoBehaviour
 {
     public Button playAgainButton;
+    [Header("Result Popup")]
+    public GameObject resultPopup;
+    public TMP_Text resultTitleText;
 
     public TMP_Text scoreText;
     public TMP_Text timerText;
@@ -54,6 +57,7 @@ public class Game3Manager : MonoBehaviour
 
     void Start()
     {
+
         if (playAgainButton != null)
             playAgainButton.gameObject.SetActive(false);
 
@@ -61,6 +65,8 @@ public class Game3Manager : MonoBehaviour
 
         if (reactionInfoText != null)
             reactionInfoText.text = "";
+        if (resultPopup != null)
+            resultPopup.SetActive(false);
 
         HideTarget();
         UpdateUI();
@@ -280,6 +286,12 @@ public class Game3Manager : MonoBehaviour
 
         if (playAgainButton != null)
             playAgainButton.gameObject.SetActive(true);
+            
+        if (resultPopup != null)
+            resultPopup.SetActive(true);
+
+        if (resultTitleText != null)
+            resultTitleText.text = "Session Complete";    
 
         if (reactionInfoText != null)
             reactionInfoText.text = "Game Over";
@@ -360,4 +372,9 @@ public class Game3Manager : MonoBehaviour
     {
         SaveCurrentGame3Data();
     }
+
+    public void BackToGames()
+{
+    SceneManager.LoadScene("GameSelection");
+}
 }

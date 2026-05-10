@@ -8,6 +8,9 @@ using UnityEngine.SceneManagement;
 public class Game4Manager : MonoBehaviour
 {
     public Button playAgainButton;
+    [Header("Result Popup")]
+    public GameObject resultPopup;
+    public TMP_Text resultTitleText;
     public TMP_Text scoreText;
     public TMP_Text infoText;
     public TMP_Text focusText;
@@ -53,8 +56,11 @@ public class Game4Manager : MonoBehaviour
 
     void Start()
     {
+
         if (playAgainButton != null)
             playAgainButton.gameObject.SetActive(false);
+        if (resultPopup != null)
+            resultPopup.SetActive(false);
 
         remainingTime = gameDuration;
 
@@ -339,6 +345,11 @@ public class Game4Manager : MonoBehaviour
 
         if (playAgainButton != null)
             playAgainButton.gameObject.SetActive(true);
+        if (resultPopup != null)
+            resultPopup.SetActive(true);
+
+        if (resultTitleText != null)
+            resultTitleText.text = "Session Complete";
 
         Debug.Log("=== GAME 4 SUMMARY ===");
         Debug.Log("Correct: " + correctCount);
@@ -351,4 +362,8 @@ public class Game4Manager : MonoBehaviour
         Debug.Log("Focused Time: " + focusedTime.ToString("F2"));
         Debug.Log("Unfocused Time: " + unfocusedTime.ToString("F2"));
     }
+    public void BackToGames()
+{
+    SceneManager.LoadScene("GameSelection");
+}
 }

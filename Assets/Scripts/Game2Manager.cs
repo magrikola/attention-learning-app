@@ -11,6 +11,9 @@ public class Game2Manager : MonoBehaviour
     public TMP_Text instructionText;
 
     public Button playAgainButton;
+    [Header("Result Popup")]
+    public GameObject resultPopup;
+    public TMP_Text resultTitleText;
 
     [Header("Color Objects")]
     public RectTransform redObject;
@@ -61,6 +64,8 @@ public class Game2Manager : MonoBehaviour
 
         if (playAgainButton != null)
             playAgainButton.gameObject.SetActive(false);
+        if (resultPopup != null)
+            resultPopup.SetActive(false);
     }
 
     void Update()
@@ -216,6 +221,11 @@ bool GetFocusState()
 
         if (playAgainButton != null)
             playAgainButton.gameObject.SetActive(true);
+         if (resultPopup != null)
+             resultPopup.SetActive(true);
+
+        if (resultTitleText != null)
+            resultTitleText.text = "Session Complete";
 
         Debug.Log("=== GAME 2 SUMMARY ===");
         Debug.Log("Score: " + score);
@@ -292,4 +302,8 @@ bool GetFocusState()
     {
         SaveCurrentGame2Data();
     }
+    public void BackToGames()
+{
+    SceneManager.LoadScene("GameSelection");
+}
 }
