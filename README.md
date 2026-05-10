@@ -117,3 +117,35 @@ File > Build Settings > Add Open Scenes
 Not
 
 Bu uygulamadaki dikkat skorları klinik tanı amacı taşımaz. Skorlar yalnızca oyun içi dikkat performansını özetlemek için kullanılmaktadır.
+## Current AR / Attention Integration Status
+
+The project currently uses a provider-based attention architecture.
+
+Implemented components:
+- AR Foundation setup
+- ARCore enabled for Android
+- ARTestScene created with AR Session and XR Origin
+- AttentionSystemManager added
+- IAttentionProvider interface added
+- FakeAttentionProvider added for simulation/testing
+- AttentionBridgeManager added
+- Game1, Game2, Game3 and Game4 updated to read attention state through AttentionSystemManager
+- Session complete popup and Back to Games navigation added to all games
+
+Current limitation:
+- Real camera-based or ML-based attention detection is not connected yet.
+- The current prototype uses simulated/fake attention state.
+- Future ML or camera result should be connected by creating a new provider such as CameraAttentionProvider or MLAttentionProvider.
+- Android device testing should be performed when a compatible device is available.
+
+Suggested ML integration flow:
+
+Camera / ML Model
+↓
+MLAttentionProvider
+↓
+AttentionSystemManager
+↓
+Games
+↓
+ReportDataManager / Parent Panel
