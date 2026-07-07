@@ -1,11 +1,13 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 
-public class TargetController : MonoBehaviour
+public class TargetController : MonoBehaviour, IPointerClickHandler
 {
     public Game3Manager game3Manager;
 
-    void OnMouseDown()
+    public void OnPointerClick(PointerEventData eventData)
     {
-        game3Manager.TargetClicked();
+        if (game3Manager != null)
+            game3Manager.TargetClicked();
     }
 }

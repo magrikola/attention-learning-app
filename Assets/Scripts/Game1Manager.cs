@@ -2,12 +2,12 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
 using System.Collections;
 
 public class Game1Manager : MonoBehaviour
 {
     public Button playAgainButton;
+
     [Header("Result Popup")]
     public GameObject resultPopup;
     public TMP_Text resultTitleText;
@@ -21,13 +21,17 @@ public class Game1Manager : MonoBehaviour
     private int lastSavedUnfocusedCorrectClicks = 0;
     private int lastSavedUnfocusedWrongClicks = 0;
 
+    [Header("Game Settings")]
     public float gameDuration = 30f;
     private float remainingTime;
 
+    [Header("UI")]
     public TMP_Text timerText;
     public TMP_Text attentionText;
-
     public ScoreManager scoreManager;
+
+    [Header("Calibration Pause")]
+    public ARFaceHeadPoseInput faceHeadPoseInput;
 
     [Header("Target Bounce Effect")]
     public RectTransform targetRect;
@@ -39,38 +43,62 @@ public class Game1Manager : MonoBehaviour
 
     private int focusedCorrectClicks = 0;
     private int focusedWrongClicks = 0;
-
     private int unfocusedCorrectClicks = 0;
     private int unfocusedWrongClicks = 0;
 
     private float focusedTime = 0f;
     private float unfocusedTime = 0f;
-    private bool gameEnded = false;
 
+    private bool gameEnded = false;
     private float saveTimer = 0f;
 
     void Start()
     {
+        gameEnded = false;
+        remainingTime = gameDuration;
+
         if (playAgainButton != null)
             playAgainButton.gameObject.SetActive(false);
-            if (resultPopup != null)
-    resultPopup.SetActive(false);
+
+        if (resultPopup != null)
+            resultPopup.SetActive(false);
+
+        if (targetObject != null)
+            targetObject.SetActive(true);
 
         if (targetRect != null)
             targetOriginalScale = targetRect.localScale;
 
-        remainingTime = gameDuration;
+        if (faceHeadPoseInput == null)
+            faceHeadPoseInput = FindObjectOfType<ARFaceHeadPoseInput>();
+
+        UpdateTimerText();
         UpdateAttentionText();
     }
 
     void Update()
     {
-        if (gameEnded) return;
+        if (gameEnded)
+            return;
+
+        if (IsGamePausedForCalibration())
+        {
+            UpdateTimerText();
+            UpdateAttentionText();
+            return;
+        }
 
         remainingTime -= Time.deltaTime;
 
-        if (timerText != null)
-            timerText.text = "Time: " + Mathf.CeilToInt(remainingTime);
+        if (remainingTime <= 0f)
+        {
+            remainingTime = 0f;
+            UpdateTimerText();
+            EndGame();
+            return;
+        }
+
+        UpdateTimerText();
 
         bool isFocused = GetFocusState();
 
@@ -88,52 +116,71 @@ public class Game1Manager : MonoBehaviour
             SaveCurrentGame1Data();
             saveTimer = 0f;
         }
+    }
 
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            SaveCurrentGame1Data();
-        }
+    public bool IsGamePausedForCalibration()
+    {
+        if (faceHeadPoseInput == null)
+            faceHeadPoseInput = FindObjectOfType<ARFaceHeadPoseInput>();
 
-        if (remainingTime <= 0)
-        {
-            EndGame();
-        }
+        if (faceHeadPoseInput == null)
+            return false;
+
+        return faceHeadPoseInput.IsCalibrationBlockingGameplay;
     }
 
     bool GetFocusState()
     {
-    if (AttentionSystemManager.Instance != null)
+        if (AttentionSystemManager.Instance != null)
+            return AttentionSystemManager.Instance.GetFocusState();
+
+        if (FakeAttentionManager.Instance != null)
+            return FakeAttentionManager.Instance.GetFocus();
+
+        return true;
+    }
+
+    void UpdateTimerText()
     {
-        return AttentionSystemManager.Instance.GetFocusState();
+        if (timerText != null)
+            timerText.text = "Time: " + Mathf.CeilToInt(remainingTime);
     }
 
-    if (FakeAttentionManager.Instance != null)
+    void UpdateAttentionText()
     {
-        return FakeAttentionManager.Instance.GetFocus();
-    }
+        if (attentionText == null)
+            return;
 
-    return true;
-    }
-  void UpdateAttentionText()
-  {
-    if (attentionText == null) return;
+        if (IsGamePausedForCalibration())
+        {
+            attentionText.text = "Calibrating...";
+            return;
+        }
 
-    bool isFocused = GetFocusState();
-    attentionText.text = isFocused
-    ? "✓ Focused"
-    : "! Not Focused";
+        bool isFocused = GetFocusState();
+
+        attentionText.text = isFocused
+            ? "Focused"
+            : "Not Focused";
     }
 
     public bool CanScore()
-   {
+    {
+        if (gameEnded)
+            return false;
+
+        if (IsGamePausedForCalibration())
+            return false;
+
         bool isFocused = GetFocusState();
 
         if (!isFocused)
         {
             unfocusedCorrectClicks++;
+            StartCoroutine(PlayWrongSoundDelayed());
             SaveCurrentGame1Data();
 
-            Debug.Log("Game1 unfocused correct click counted.");
+            Debug.Log("Game1 unfocused correct click counted. No score.");
             return false;
         }
 
@@ -142,12 +189,19 @@ public class Game1Manager : MonoBehaviour
 
     public void RegisterSuccessfulClick()
     {
-        if (gameEnded) return;
-        if (targetIsBouncing) return;
+        if (gameEnded)
+            return;
+
+        if (IsGamePausedForCalibration())
+            return;
+
+        if (targetIsBouncing)
+            return;
 
         focusedCorrectClicks++;
         SaveCurrentGame1Data();
 
+        StartCoroutine(PlayCorrectSoundDelayed());
         StartCoroutine(BounceTarget());
     }
 
@@ -192,11 +246,13 @@ public class Game1Manager : MonoBehaviour
 
     public void RegisterWrongClick()
     {
-        if (gameEnded) return;
-        if (IsPointerOverUI())
-        {
+        if (gameEnded)
             return;
-        }
+
+        if (IsGamePausedForCalibration())
+            return;
+
+        PlayWrongSound();
 
         bool isFocused = GetFocusState();
 
@@ -216,28 +272,75 @@ public class Game1Manager : MonoBehaviour
 
     public bool IsPointerOverUI()
     {
-        if (EventSystem.current == null)
-            return false;
+        return false;
+    }
 
-        if (Input.touchCount > 0)
-            return EventSystem.current.IsPointerOverGameObject(Input.GetTouch(0).fingerId);
+    void PlayCorrectSound()
+    {
+        Debug.Log("Game1Manager: PlayCorrectSound çağrıldı.");
 
-        return EventSystem.current.IsPointerOverGameObject();
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayCorrect();
+        }
+        else
+        {
+            Debug.LogWarning("Game1Manager: AudioManager.Instance NULL!");
+        }
+    }
+
+    IEnumerator PlayCorrectSoundDelayed()
+    {
+        yield return new WaitForSeconds(0.12f);
+        PlayCorrectSound();
+    }
+
+    void PlayWrongSound()
+    {
+        Debug.Log("Game1Manager: PlayWrongSound çağrıldı.");
+
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayWrong();
+        }
+        else
+        {
+            Debug.LogWarning("Game1Manager: AudioManager.Instance NULL!");
+        }
+    }
+
+    IEnumerator PlayWrongSoundDelayed()
+    {
+        yield return new WaitForSeconds(0.12f);
+        PlayWrongSound();
     }
 
     void EndGame()
     {
-        if (playAgainButton != null)
-            playAgainButton.gameObject.SetActive(true);
+        if (gameEnded)
+            return;
+
+        gameEnded = true;
+        remainingTime = 0f;
+
+        UpdateTimerText();
+        UpdateAttentionText();
+
         if (targetObject != null)
-            targetObject.SetActive(false);    
+            targetObject.SetActive(false);
+
         if (resultPopup != null)
+        {
             resultPopup.SetActive(true);
+            resultPopup.transform.SetAsLastSibling();
+        }
 
         if (resultTitleText != null)
             resultTitleText.text = "Session Complete";
 
-        gameEnded = true;
+        if (playAgainButton != null)
+            playAgainButton.gameObject.SetActive(true);
+
         SaveCurrentGame1Data();
 
         Debug.Log("=== GAME 1 SESSION SUMMARY ===");
@@ -316,8 +419,9 @@ public class Game1Manager : MonoBehaviour
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
+
     public void BackToGames()
     {
-    SceneManager.LoadScene("GameSelection");
+        SceneManager.LoadScene("MainMenu");
     }
 }

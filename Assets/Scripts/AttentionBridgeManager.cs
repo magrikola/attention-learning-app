@@ -3,7 +3,7 @@ using UnityEngine;
 public class AttentionBridgeManager : MonoBehaviour
 {
     [Header("Mode Settings")]
-    public bool useAutomaticSimulation = true;
+    public bool useAutomaticSimulation = false;
 
     [Header("Simulation Settings")]
     public float focusedDuration = 5f;
@@ -40,12 +40,12 @@ public class AttentionBridgeManager : MonoBehaviour
 
     public void ApplyFocusState(bool isFocused)
     {
-        if (FakeAttentionManager.Instance != null)
+        if (AttentionSystemManager.Instance != null)
         {
-            FakeAttentionManager.Instance.SetFocus(isFocused);
+            AttentionSystemManager.Instance.SetFocusState(isFocused);
         }
 
-        Debug.Log("[AttentionBridgeManager] Focus state sent to game system: " + isFocused);
+        Debug.Log("[AttentionBridgeManager] Focus state sent: " + isFocused);
     }
 
     public void ApplyModelResult(bool modelFocusedResult)

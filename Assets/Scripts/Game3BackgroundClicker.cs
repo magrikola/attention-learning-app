@@ -1,31 +1,25 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
-using System.Collections.Generic;
 
-public class Game3BackgroundClicker : MonoBehaviour
+public class Game3BackgroundClicker : MonoBehaviour, IPointerClickHandler
 {
     public Game3Manager game3Manager;
 
-    void OnMouseDown()
+    void Start()
     {
-        if (IsPointerOverUI())
-            return;
-
-        if (game3Manager != null)
-            game3Manager.RegisterWrongClick();
+        Debug.Log("Game3BackgroundClicker aktif. Attached object: " + gameObject.name);
     }
 
-    bool IsPointerOverUI()
+    public void OnPointerClick(PointerEventData eventData)
     {
-        if (EventSystem.current == null)
-            return false;
+        Debug.Log("GAME3 BACKGROUND UI POINTER CLICKED");
 
-        PointerEventData eventData = new PointerEventData(EventSystem.current);
-        eventData.position = Input.mousePosition;
+        if (game3Manager == null)
+        {
+            Debug.LogWarning("Game3BackgroundClicker: Game3Manager bağlı değil!");
+            return;
+        }
 
-        List<RaycastResult> results = new List<RaycastResult>();
-        EventSystem.current.RaycastAll(eventData, results);
-
-        return results.Count > 0;
+        game3Manager.RegisterWrongClick();
     }
 }

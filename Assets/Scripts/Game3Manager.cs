@@ -3,26 +3,37 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
 
 public class Game3Manager : MonoBehaviour
 {
     public Button playAgainButton;
+
     [Header("Result Popup")]
     public GameObject resultPopup;
     public TMP_Text resultTitleText;
 
+    [Header("UI")]
     public TMP_Text scoreText;
     public TMP_Text timerText;
     public TMP_Text attentionText;
     public TMP_Text reactionInfoText;
     public TMP_Text missedText;
 
-    public GameObject reactionTarget;
+    [Header("Target")]
+    public RectTransform reactionTarget;
 
+    [Tooltip("Boş bırakırsan ReactionTarget'ın parent RectTransform'u spawn alanı olarak kullanılır.")]
+    public RectTransform spawnArea;
+
+    [Header("Target Spawn Area")]
+    public float edgePaddingX = 120f;
+    public float edgePaddingY = 220f;
+
+    [Header("Game Stats")]
     public int score = 0;
     public int missedCount = 0;
 
+    [Header("Game Settings")]
     public float gameDuration = 30f;
     public float targetVisibleTime = 1.0f;
 
@@ -30,6 +41,7 @@ public class Game3Manager : MonoBehaviour
     private float targetAppearTime;
     private bool targetActive = false;
     private bool gameEnded = false;
+    private bool wasCalibrating = false;
 
     private float focusedTime = 0f;
     private float unfocusedTime = 0f;
@@ -57,16 +69,16 @@ public class Game3Manager : MonoBehaviour
 
     void Start()
     {
-
         if (playAgainButton != null)
             playAgainButton.gameObject.SetActive(false);
+
+        if (resultPopup != null)
+            resultPopup.SetActive(false);
 
         remainingTime = gameDuration;
 
         if (reactionInfoText != null)
             reactionInfoText.text = "";
-        if (resultPopup != null)
-            resultPopup.SetActive(false);
 
         HideTarget();
         UpdateUI();
@@ -78,6 +90,36 @@ public class Game3Manager : MonoBehaviour
     void Update()
     {
         if (gameEnded) return;
+
+        if (IsAttentionSystemBusy())
+        {
+            wasCalibrating = true;
+
+            UpdateAttentionText();
+
+            if (timerText != null)
+                timerText.text = "Calibrating...";
+
+            if (reactionInfoText != null)
+                reactionInfoText.text = "Calibrating...";
+
+            HideTarget();
+            CancelInvoke(nameof(ShowTarget));
+
+            return;
+        }
+
+        if (wasCalibrating)
+        {
+            wasCalibrating = false;
+
+            if (reactionInfoText != null)
+                reactionInfoText.text = "";
+
+            HideTarget();
+            CancelInvoke(nameof(ShowTarget));
+            Invoke(nameof(ShowTarget), 0.5f);
+        }
 
         remainingTime -= Time.deltaTime;
 
@@ -101,58 +143,94 @@ public class Game3Manager : MonoBehaviour
             saveTimer = 0f;
         }
 
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            SaveCurrentGame3Data();
-        }
-
         if (targetActive && Time.time - targetAppearTime > targetVisibleTime)
         {
             MissTarget();
         }
 
-        if (remainingTime <= 0)
+        if (remainingTime <= 0f)
         {
             EndGame();
         }
     }
 
-   bool GetFocusState()
-{
-    if (AttentionSystemManager.Instance != null)
+    bool GetFocusState()
     {
-        return AttentionSystemManager.Instance.GetFocusState();
+        if (AttentionSystemManager.Instance != null)
+            return AttentionSystemManager.Instance.GetFocusState();
+
+        if (FakeAttentionManager.Instance != null)
+            return FakeAttentionManager.Instance.GetFocus();
+
+        return true;
     }
 
-    if (FakeAttentionManager.Instance != null)
+    bool IsAttentionSystemBusy()
     {
-        return FakeAttentionManager.Instance.GetFocus();
+        ARFaceHeadPoseInput input = FindObjectOfType<ARFaceHeadPoseInput>();
+        return input != null && input.IsCalibrationBlockingGameplay;
     }
-
-    return true;
-}
 
     void UpdateAttentionText()
-{
-    if (attentionText == null) return;
+    {
+        if (attentionText == null) return;
 
-    bool isFocused = GetFocusState();
+        if (IsAttentionSystemBusy())
+        {
+            attentionText.text = "Calibrating...";
+            return;
+        }
 
-    attentionText.text = isFocused
-    ? "✓ Focused"
-    : "! Not Focused";
-}
+        attentionText.text = GetFocusState()
+            ? "Focused"
+            : "Not Focused";
+    }
 
     void ShowTarget()
     {
         if (gameEnded) return;
+        if (IsAttentionSystemBusy()) return;
         if (reactionTarget == null) return;
 
-        float randomX = Random.Range(-2f, 2f);
-        float randomY = Random.Range(-3f, 2f);
+        RectTransform area = spawnArea;
 
-        reactionTarget.transform.position = new Vector3(randomX, randomY, 0f);
-        reactionTarget.SetActive(true);
+        if (area == null)
+            area = reactionTarget.parent as RectTransform;
+
+        if (area == null)
+        {
+            Debug.LogWarning("Game3Manager: Spawn area bulunamadı.");
+            return;
+        }
+
+        Rect rect = area.rect;
+
+        float halfTargetWidth = reactionTarget.rect.width * 0.5f * reactionTarget.localScale.x;
+        float halfTargetHeight = reactionTarget.rect.height * 0.5f * reactionTarget.localScale.y;
+
+        float minX = rect.xMin + edgePaddingX + halfTargetWidth;
+        float maxX = rect.xMax - edgePaddingX - halfTargetWidth;
+
+        float minY = rect.yMin + edgePaddingY + halfTargetHeight;
+        float maxY = rect.yMax - edgePaddingY - halfTargetHeight;
+
+        if (minX > maxX)
+        {
+            minX = rect.xMin + halfTargetWidth;
+            maxX = rect.xMax - halfTargetWidth;
+        }
+
+        if (minY > maxY)
+        {
+            minY = rect.yMin + halfTargetHeight;
+            maxY = rect.yMax - halfTargetHeight;
+        }
+
+        float randomX = Random.Range(minX, maxX);
+        float randomY = Random.Range(minY, maxY);
+
+        reactionTarget.anchoredPosition = new Vector2(randomX, randomY);
+        reactionTarget.gameObject.SetActive(true);
 
         targetAppearTime = Time.time;
         targetActive = true;
@@ -161,7 +239,7 @@ public class Game3Manager : MonoBehaviour
     void HideTarget()
     {
         if (reactionTarget != null)
-            reactionTarget.SetActive(false);
+            reactionTarget.gameObject.SetActive(false);
 
         targetActive = false;
     }
@@ -169,14 +247,18 @@ public class Game3Manager : MonoBehaviour
     public void TargetClicked()
     {
         if (!targetActive || gameEnded) return;
+        if (IsAttentionSystemBusy()) return;
+
+        PlayMysterySound();
 
         bool isFocused = GetFocusState();
         float reactionTime = Time.time - targetAppearTime;
 
-        score++;
-
         if (isFocused)
         {
+            StartCoroutine(PlayCorrectSoundDelayed());
+
+            score++;
             focusedCorrectClicks++;
 
             totalReactionTime += reactionTime;
@@ -184,13 +266,18 @@ public class Game3Manager : MonoBehaviour
 
             if (reactionInfoText != null)
                 reactionInfoText.text = "Reaction: " + reactionTime.ToString("F2") + "s";
+
+            Debug.Log("Game3 clicked while focused: +1 score");
         }
         else
         {
             unfocusedCorrectClicks++;
+            StartCoroutine(PlayWrongSoundDelayed());
 
             if (reactionInfoText != null)
                 reactionInfoText.text = "Unfocused correct click";
+
+            Debug.Log("Game3 unfocused correct click counted: no score");
         }
 
         UpdateUI();
@@ -203,27 +290,31 @@ public class Game3Manager : MonoBehaviour
     {
         targetActive = false;
 
-        BounceEffectClicker effect = reactionTarget.GetComponent<BounceEffectClicker>();
+        if (reactionTarget != null)
+        {
+            BounceEffectClicker effect = reactionTarget.GetComponent<BounceEffectClicker>();
 
-        if (effect != null)
-            effect.PlayEffect();
+            if (effect != null)
+                effect.PlayEffect();
+        }
 
         yield return new WaitForSeconds(0.20f);
 
         HideTarget();
 
-        float nextDelay = Random.Range(0.8f, 1.8f);
-        Invoke(nameof(ShowTarget), nextDelay);
+        if (!gameEnded && !IsAttentionSystemBusy())
+        {
+            float nextDelay = Random.Range(0.8f, 1.8f);
+            Invoke(nameof(ShowTarget), nextDelay);
+        }
     }
 
     public void RegisterWrongClick()
     {
         if (gameEnded) return;
-        if (IsPointerOverUI())
-        {
-            return;
-        }
-        
+        if (IsAttentionSystemBusy()) return;
+
+        PlayWrongSound();
 
         bool isFocused = GetFocusState();
 
@@ -240,30 +331,38 @@ public class Game3Manager : MonoBehaviour
 
         SaveCurrentGame3Data();
     }
-    bool IsPointerOverUI()
-    {
-        if (EventSystem.current == null)
-            return false;
-
-        if (Input.touchCount > 0)
-            return EventSystem.current.IsPointerOverGameObject(Input.GetTouch(0).fingerId);
-
-        return EventSystem.current.IsPointerOverGameObject();
-    }
 
     void MissTarget()
     {
-        missedCount++;
+        if (gameEnded) return;
+        if (IsAttentionSystemBusy()) return;
 
-        if (reactionInfoText != null)
-            reactionInfoText.text = "Missed!";
+        PlayWrongSound();
+
+        bool isFocused = GetFocusState();
+
+        if (isFocused)
+        {
+            missedCount++;
+
+            if (reactionInfoText != null)
+                reactionInfoText.text = "Missed!";
+        }
+        else
+        {
+            if (reactionInfoText != null)
+                reactionInfoText.text = "Target expired while not focused";
+        }
 
         HideTarget();
         UpdateUI();
         SaveCurrentGame3Data();
 
-        float nextDelay = Random.Range(0.6f, 1.4f);
-        Invoke(nameof(ShowTarget), nextDelay);
+        if (!gameEnded && !IsAttentionSystemBusy())
+        {
+            float nextDelay = Random.Range(0.6f, 1.4f);
+            Invoke(nameof(ShowTarget), nextDelay);
+        }
     }
 
     void UpdateUI()
@@ -275,23 +374,56 @@ public class Game3Manager : MonoBehaviour
             missedText.text = "Missed: " + missedCount;
     }
 
+    void PlayMysterySound()
+    {
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayMysteryAlert();
+    }
+
+    void PlayCorrectSound()
+    {
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayCorrect();
+    }
+
+    void PlayWrongSound()
+    {
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayWrong();
+    }
+
+    IEnumerator PlayCorrectSoundDelayed()
+    {
+        yield return new WaitForSeconds(0.12f);
+        PlayCorrectSound();
+    }
+
+    IEnumerator PlayWrongSoundDelayed()
+    {
+        yield return new WaitForSeconds(0.12f);
+        PlayWrongSound();
+    }
+
     public void PlayAgain()
     {
+        SaveCurrentGame3Data();
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     void EndGame()
     {
+        if (gameEnded) return;
+
         gameEnded = true;
 
         if (playAgainButton != null)
             playAgainButton.gameObject.SetActive(true);
-            
+
         if (resultPopup != null)
             resultPopup.SetActive(true);
 
         if (resultTitleText != null)
-            resultTitleText.text = "Session Complete";    
+            resultTitleText.text = "Session Complete";
 
         if (reactionInfoText != null)
             reactionInfoText.text = "Game Over";
@@ -374,7 +506,14 @@ public class Game3Manager : MonoBehaviour
     }
 
     public void BackToGames()
-{
-    SceneManager.LoadScene("GameSelection");
-}
+    {
+        SaveCurrentGame3Data();
+        SceneManager.LoadScene("MainMenu");
+    }
+
+    public void BackToMainMenu()
+    {
+        SaveCurrentGame3Data();
+        SceneManager.LoadScene("MainMenu");
+    }
 }

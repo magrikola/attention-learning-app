@@ -26,9 +26,6 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/ParentPanel.unity
     guid: c9a759ce35cb8974b98cc926e29d4363
-  - enabled: 1
-    path: Assets/Scenes/ARTestScene.unity
-    guid: cc5151beaf8fa3b4eb81ddd2a6adac7c
   m_configObjects:
     UnityEditor.XR.ARCore.ARCoreSettings: {fileID: 11400000, guid: 85a2f618ed3a09f4aabfbb9d4ac2927d, type: 2}
     com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: ccc31f01dbb89024fb9d5d39f2e941ff, type: 2}

@@ -1,6 +1,7 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 
-public class TargetClick : MonoBehaviour
+public class TargetClicker : MonoBehaviour, IPointerClickHandler
 {
     public ScoreManager scoreManager;
     public Game1Manager game1Manager;
@@ -12,18 +13,34 @@ public class TargetClick : MonoBehaviour
         originalScale = transform.localScale;
     }
 
-    void OnMouseDown()
+    public void OnPointerClick(PointerEventData eventData)
     {
+        Debug.Log("TARGET POINTER CLICKED");
+
         if (game1Manager == null)
         {
-            Debug.LogError("Game1Manageris not connected!");
+            Debug.LogError("TargetClicker: Game1Manager is not connected!");
             return;
         }
+
+        if (game1Manager.IsGamePausedForCalibration())
+        {
+            Debug.Log("Clicked during calibration: ignored.");
+            return;
+        }
+
+        PlayMysterySound();
 
         if (game1Manager.CanScore())
         {
             if (scoreManager != null)
+            {
                 scoreManager.AddScore(1);
+            }
+            else
+            {
+                Debug.LogWarning("TargetClicker: ScoreManager is not connected!");
+            }
 
             game1Manager.RegisterSuccessfulClick();
             MoveToRandomPosition();
@@ -32,17 +49,37 @@ public class TargetClick : MonoBehaviour
         }
         else
         {
-            Debug.Log("Clicked while NOT focused: no score");
+            Debug.Log("Clicked while not focused or game paused: no score");
             ShowNoScoreFeedback();
+        }
+    }
+
+    void PlayMysterySound()
+    {
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayMysteryAlert();
         }
     }
 
     void MoveToRandomPosition()
     {
-        float randomX = Random.Range(-1.6f, 1.6f);
-        float randomY = Random.Range(-3.2f, 2.2f);
+        RectTransform rectTransform = GetComponent<RectTransform>();
 
-        transform.position = new Vector3(randomX, randomY, 0f);
+        if (rectTransform != null)
+        {
+            float randomX = Random.Range(-350f, 350f);
+            float randomY = Random.Range(-450f, 250f);
+
+            rectTransform.anchoredPosition = new Vector2(randomX, randomY);
+        }
+        else
+        {
+            float randomX = Random.Range(-1.6f, 1.6f);
+            float randomY = Random.Range(-3.2f, 2.2f);
+
+            transform.position = new Vector3(randomX, randomY, 0f);
+        }
     }
 
     void ShowNoScoreFeedback()

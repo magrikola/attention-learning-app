@@ -7,6 +7,11 @@ public class ARFocusTester : MonoBehaviour
     private float timer = 0f;
     private bool currentFocus = true;
 
+    void Start()
+    {
+        SendFocusState(true);
+    }
+
     void Update()
     {
         timer += Time.deltaTime;
@@ -14,15 +19,21 @@ public class ARFocusTester : MonoBehaviour
         if (timer >= switchInterval)
         {
             timer = 0f;
-
             currentFocus = !currentFocus;
+            SendFocusState(currentFocus);
+        }
+    }
 
-            if (FakeAttentionManager.Instance != null)
-            {
-                FakeAttentionManager.Instance.SetFocus(currentFocus);
-
-                Debug.Log("AR TEST -> Focus State Changed: " + currentFocus);
-            }
+    void SendFocusState(bool focus)
+    {
+        if (AttentionSystemManager.Instance != null)
+        {
+            AttentionSystemManager.Instance.SetFocusState(focus);
+            Debug.Log("[ARFocusTester] AR TEST -> Focus State Changed: " + focus);
+        }
+        else
+        {
+            Debug.LogWarning("[ARFocusTester] AttentionSystemManager not found!");
         }
     }
 }

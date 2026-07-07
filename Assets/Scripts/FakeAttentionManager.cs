@@ -9,6 +9,7 @@ public class FakeAttentionManager : MonoBehaviour
 
     [Header("Prototype / Debug")]
     public bool useFakeAttention = true;
+    public bool logOnlyOnChange = true;
 
     void Awake()
     {
@@ -32,6 +33,12 @@ public class FakeAttentionManager : MonoBehaviour
 
     public void SetFocus(bool value)
     {
+        if (logOnlyOnChange && isFocused == value)
+        {
+            isFocused = value;
+            return;
+        }
+
         isFocused = value;
         Debug.Log("Attention State: " + GetFocusText());
     }

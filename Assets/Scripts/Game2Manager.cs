@@ -11,6 +11,7 @@ public class Game2Manager : MonoBehaviour
     public TMP_Text instructionText;
 
     public Button playAgainButton;
+
     [Header("Result Popup")]
     public GameObject resultPopup;
     public TMP_Text resultTitleText;
@@ -52,6 +53,8 @@ public class Game2Manager : MonoBehaviour
 
     private bool gameEnded = false;
 
+    private ARFaceHeadPoseInput attentionInput;
+
     void Start()
     {
         remainingTime = gameDuration;
@@ -64,6 +67,7 @@ public class Game2Manager : MonoBehaviour
 
         if (playAgainButton != null)
             playAgainButton.gameObject.SetActive(false);
+
         if (resultPopup != null)
             resultPopup.SetActive(false);
     }
@@ -71,6 +75,16 @@ public class Game2Manager : MonoBehaviour
     void Update()
     {
         if (gameEnded) return;
+
+        if (IsAttentionSystemBusy())
+        {
+            UpdateAttentionText();
+
+            if (timerText != null)
+                timerText.text = "Calibrating...";
+
+            return;
+        }
 
         remainingTime -= Time.deltaTime;
 
@@ -94,41 +108,86 @@ public class Game2Manager : MonoBehaviour
             saveTimer = 0f;
         }
 
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            SaveCurrentGame2Data();
-        }
-
         if (remainingTime <= 0)
         {
             EndGame();
         }
     }
 
-bool GetFocusState()
-{
-    if (AttentionSystemManager.Instance != null)
+    bool GetFocusState()
     {
-        return AttentionSystemManager.Instance.GetFocusState();
+        if (AttentionSystemManager.Instance != null)
+        {
+            return AttentionSystemManager.Instance.GetFocusState();
+        }
+
+        if (FakeAttentionManager.Instance != null)
+        {
+            return FakeAttentionManager.Instance.GetFocus();
+        }
+
+        return true;
     }
 
-    if (FakeAttentionManager.Instance != null)
+    bool IsAttentionSystemBusy()
     {
-        return FakeAttentionManager.Instance.GetFocus();
+        if (attentionInput == null)
+            attentionInput = FindObjectOfType<ARFaceHeadPoseInput>();
+
+        return attentionInput != null && attentionInput.IsCalibrationBlockingGameplay;
     }
 
-    return true;
-}
-   void UpdateAttentionText()
-{
-    if (attentionText == null) return;
+    void UpdateAttentionText()
+    {
+        if (attentionText == null) return;
 
-    bool isFocused = GetFocusState();
+        if (IsAttentionSystemBusy())
+        {
+            attentionText.text = "Calibrating...";
+            return;
+        }
 
-   attentionText.text = isFocused
-    ? "✓ Focused"
-    : "! Not Focused";
-}
+        bool isFocused = GetFocusState();
+
+        attentionText.text = isFocused
+            ? "Focused"
+            : "Not Focused";
+    }
+
+    void PlayMysterySound()
+    {
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayMysteryAlert();
+        else
+            Debug.LogWarning("Game2Manager: AudioManager.Instance NULL!");
+    }
+
+    void PlayCorrectSound()
+    {
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayCorrect();
+        else
+            Debug.LogWarning("Game2Manager: AudioManager.Instance NULL!");
+    }
+
+    void PlayWrongSound()
+    {
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayWrong();
+        else
+            Debug.LogWarning("Game2Manager: AudioManager.Instance NULL!");
+    }
+
+    System.Collections.IEnumerator PlayResultSoundDelayed(bool playCorrectSound)
+    {
+        yield return new WaitForSeconds(0.12f);
+
+        if (playCorrectSound)
+            PlayCorrectSound();
+        else
+            PlayWrongSound();
+    }
+
     void GenerateNewTask()
     {
         targetColor = colors[Random.Range(0, colors.Length)];
@@ -164,33 +223,76 @@ bool GetFocusState()
 
     public void CheckAnswer(string selectedColor, GameObject clickedObject)
     {
-        if (gameEnded) return;
+        if (gameEnded || IsAttentionSystemBusy()) return;
 
-        BounceEffectClicker effect = clickedObject.GetComponent<BounceEffectClicker>();
-        if (effect != null)
-            effect.PlayEffect();
+       
+        PlayMysterySound();
+
+        if (clickedObject != null)
+        {
+            BounceEffectClicker effect = clickedObject.GetComponent<BounceEffectClicker>();
+            if (effect != null)
+                effect.PlayEffect();
+        }
 
         bool isCorrect = selectedColor == targetColor;
         bool isFocused = GetFocusState();
 
-        if (isCorrect)
+        if (isFocused)
         {
-            score++;
-            correctAnswers++;
+            if (isCorrect)
+            {
+                StartCoroutine(PlayResultSoundDelayed(true));
 
-            if (isFocused)
+                correctAnswers++;
+                score++;
                 focusedCorrectAttempts++;
+
+                if (instructionText != null)
+                    instructionText.text = "Correct";
+
+                Debug.Log("Game2 focused correct answer: +1 score");
+            }
             else
-                unfocusedCorrectAttempts++;
+            {
+                StartCoroutine(PlayResultSoundDelayed(false));
+
+                wrongAnswers++;
+                focusedWrongAttempts++;
+
+                if (instructionText != null)
+                    instructionText.text = "Wrong";
+
+                Debug.Log("Game2 focused wrong answer counted.");
+            }
         }
         else
         {
-            wrongAnswers++;
+            if (isCorrect)
+            {
+                
+                StartCoroutine(PlayResultSoundDelayed(false));
 
-            if (isFocused)
-                focusedWrongAttempts++;
+                correctAnswers++;
+                unfocusedCorrectAttempts++;
+
+                if (instructionText != null)
+                    instructionText.text = "Unfocused but correct";
+
+                Debug.Log("Game2 unfocused correct answer counted: no score, wrong sound.");
+            }
             else
+            {
+                StartCoroutine(PlayResultSoundDelayed(false));
+
+                wrongAnswers++;
                 unfocusedWrongAttempts++;
+
+                if (instructionText != null)
+                    instructionText.text = "Unfocused and wrong";
+
+                Debug.Log("Game2 unfocused wrong answer counted.");
+            }
         }
 
         UpdateUI();
@@ -207,7 +309,7 @@ bool GetFocusState()
 
     System.Collections.IEnumerator NextTaskAfterEffect()
     {
-        yield return new WaitForSeconds(0.18f);
+        yield return new WaitForSeconds(0.6f);
 
         GenerateNewTask();
         RandomizeColorPositions();
@@ -221,8 +323,9 @@ bool GetFocusState()
 
         if (playAgainButton != null)
             playAgainButton.gameObject.SetActive(true);
-         if (resultPopup != null)
-             resultPopup.SetActive(true);
+
+        if (resultPopup != null)
+            resultPopup.SetActive(true);
 
         if (resultTitleText != null)
             resultTitleText.text = "Session Complete";
@@ -239,6 +342,7 @@ bool GetFocusState()
 
     public void PlayAgain()
     {
+        SaveCurrentGame2Data();
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
@@ -302,8 +406,10 @@ bool GetFocusState()
     {
         SaveCurrentGame2Data();
     }
+
     public void BackToGames()
-{
-    SceneManager.LoadScene("GameSelection");
-}
+    {
+        SaveCurrentGame2Data();
+        SceneManager.LoadScene("MainMenu");
+    }
 }

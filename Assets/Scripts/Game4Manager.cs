@@ -8,9 +8,8 @@ using UnityEngine.SceneManagement;
 public class Game4Manager : MonoBehaviour
 {
     public Button playAgainButton;
-    [Header("Result Popup")]
-    public GameObject resultPopup;
-    public TMP_Text resultTitleText;
+
+    [Header("UI")]
     public TMP_Text scoreText;
     public TMP_Text infoText;
     public TMP_Text focusText;
@@ -22,13 +21,17 @@ public class Game4Manager : MonoBehaviour
 
     public float flashTime = 0.5f;
     public float timeBetweenFlashes = 0.25f;
-    public float gameDuration = 30f;
 
     [Header("Button Bounce Effect")]
     public float bounceScale = 1.15f;
     public float bounceDuration = 0.12f;
 
-    private float remainingTime;
+    [Header("Sequence Highlight")]
+    public float sequenceScale = 1.22f;
+    public float dimAlpha = 0.30f;
+
+    [Header("Calibration Pause")]
+    public ARFaceHeadPoseInput faceHeadPoseInput;
 
     private List<int> sequence = new List<int>();
     private int playerIndex = 0;
@@ -46,6 +49,7 @@ public class Game4Manager : MonoBehaviour
 
     private bool playerTurn = false;
     private bool gameEnded = false;
+    private bool wasPausedForCalibration = false;
 
     private float focusedTime = 0f;
     private float unfocusedTime = 0f;
@@ -56,13 +60,11 @@ public class Game4Manager : MonoBehaviour
 
     void Start()
     {
-
         if (playAgainButton != null)
             playAgainButton.gameObject.SetActive(false);
-        if (resultPopup != null)
-            resultPopup.SetActive(false);
 
-        remainingTime = gameDuration;
+        if (faceHeadPoseInput == null)
+            faceHeadPoseInput = FindObjectOfType<ARFaceHeadPoseInput>();
 
         buttons = new Button[] { redButton, blueButton, greenButton, yellowButton };
         originalColors = new Color[buttons.Length];
@@ -70,27 +72,74 @@ public class Game4Manager : MonoBehaviour
 
         for (int i = 0; i < buttons.Length; i++)
         {
+            if (buttons[i] == null) continue;
+
             originalColors[i] = buttons[i].image.color;
             originalScales[i] = buttons[i].transform.localScale;
         }
 
-        redButton.onClick.AddListener(() => PlayerPressed(0));
-        blueButton.onClick.AddListener(() => PlayerPressed(1));
-        greenButton.onClick.AddListener(() => PlayerPressed(2));
-        yellowButton.onClick.AddListener(() => PlayerPressed(3));
+        if (redButton != null) redButton.onClick.AddListener(() => PlayerPressed(0));
+        if (blueButton != null) blueButton.onClick.AddListener(() => PlayerPressed(1));
+        if (greenButton != null) greenButton.onClick.AddListener(() => PlayerPressed(2));
+        if (yellowButton != null) yellowButton.onClick.AddListener(() => PlayerPressed(3));
 
         UpdateScoreText();
         UpdateFocusText();
         SetButtonsInteractable(false);
+        ResetAllButtonsVisuals();
 
-        StartCoroutine(StartNewRound());
+        if (IsGamePausedForCalibration())
+        {
+            wasPausedForCalibration = true;
+
+            if (infoText != null)
+                infoText.text = "Calibrating...";
+
+            SetButtonsInteractable(false);
+            ResetAllButtonsVisuals();
+        }
+        else
+        {
+            StartCoroutine(StartNewRound());
+        }
     }
 
     void Update()
     {
         if (gameEnded) return;
 
-        remainingTime -= Time.deltaTime;
+        if (IsGamePausedForCalibration())
+        {
+            if (!wasPausedForCalibration)
+            {
+                wasPausedForCalibration = true;
+
+                StopAllCoroutines();
+                playerTurn = false;
+                SetButtonsInteractable(false);
+                ResetAllButtonsVisuals();
+
+                if (infoText != null)
+                    infoText.text = "Calibrating...";
+            }
+
+            UpdateFocusText();
+            return;
+        }
+
+        if (wasPausedForCalibration)
+        {
+            wasPausedForCalibration = false;
+
+            playerTurn = false;
+            SetButtonsInteractable(false);
+            ResetAllButtonsVisuals();
+
+            if (infoText != null)
+                infoText.text = "Watch the sequence";
+
+            StartCoroutine(StartNewRound());
+        }
 
         bool isFocused = GetFocusState();
 
@@ -100,50 +149,90 @@ public class Game4Manager : MonoBehaviour
             unfocusedTime += Time.deltaTime;
 
         SetButtonsInteractable(playerTurn);
-
         UpdateFocusText();
+    }
 
-        if (remainingTime <= 0)
-            EndGame();
+    public bool IsGamePausedForCalibration()
+    {
+        if (faceHeadPoseInput == null)
+            faceHeadPoseInput = FindObjectOfType<ARFaceHeadPoseInput>();
+
+        if (faceHeadPoseInput == null)
+            return false;
+
+        return faceHeadPoseInput.IsCalibrationBlockingGameplay;
     }
 
     bool GetFocusState()
-{
-    if (AttentionSystemManager.Instance != null)
     {
-        return AttentionSystemManager.Instance.GetFocusState();
-    }
+        if (AttentionSystemManager.Instance != null)
+            return AttentionSystemManager.Instance.GetFocusState();
 
-    if (FakeAttentionManager.Instance != null)
-    {
-        return FakeAttentionManager.Instance.GetFocus();
-    }
+        if (FakeAttentionManager.Instance != null)
+            return FakeAttentionManager.Instance.GetFocus();
 
-    return true;
-}
+        return true;
+    }
 
     void UpdateFocusText()
-{
-    if (focusText == null) return;
+    {
+        if (focusText == null) return;
 
-    bool isFocused = GetFocusState();
+        if (IsGamePausedForCalibration())
+        {
+            focusText.text = "Calibrating...";
+            return;
+        }
 
-   focusText.text = isFocused
-    ? "✓ Focused"
-    : "! Not Focused";
-}
+        bool isFocused = GetFocusState();
+
+        focusText.text = isFocused ? "Focused" : "Not Focused";
+    }
+
+    void DimAllButtons()
+    {
+        for (int i = 0; i < buttons.Length; i++)
+        {
+            if (buttons[i] == null) continue;
+
+            buttons[i].image.color = new Color(
+                originalColors[i].r,
+                originalColors[i].g,
+                originalColors[i].b,
+                dimAlpha
+            );
+
+            buttons[i].transform.localScale = originalScales[i];
+        }
+    }
+
+    void ResetAllButtonsVisuals()
+    {
+        for (int i = 0; i < buttons.Length; i++)
+        {
+            if (buttons[i] == null) continue;
+
+            buttons[i].image.color = originalColors[i];
+            buttons[i].transform.localScale = originalScales[i];
+        }
+    }
 
     IEnumerator StartNewRound()
     {
         if (gameEnded) yield break;
+        if (IsGamePausedForCalibration()) yield break;
 
         playerTurn = false;
         SetButtonsInteractable(false);
+        ResetAllButtonsVisuals();
 
         if (infoText != null)
             infoText.text = "Watch the sequence";
 
         yield return new WaitForSeconds(1f);
+
+        if (gameEnded) yield break;
+        if (IsGamePausedForCalibration()) yield break;
 
         sequence.Clear();
 
@@ -155,6 +244,7 @@ public class Game4Manager : MonoBehaviour
         yield return StartCoroutine(ShowSequence());
 
         if (gameEnded) yield break;
+        if (IsGamePausedForCalibration()) yield break;
 
         playerIndex = 0;
         playerTurn = true;
@@ -163,41 +253,98 @@ public class Game4Manager : MonoBehaviour
             infoText.text = "Repeat the sequence";
 
         SetButtonsInteractable(true);
+        ResetAllButtonsVisuals();
     }
 
     IEnumerator ShowSequence()
     {
+        if (IsGamePausedForCalibration()) yield break;
+
+        DimAllButtons();
+        yield return new WaitForSeconds(0.15f);
+
         for (int i = 0; i < sequence.Count; i++)
         {
             if (gameEnded) yield break;
+            if (IsGamePausedForCalibration()) yield break;
 
             int index = sequence[i];
 
-            buttons[index].image.color = Color.white;
+            if (buttons[index] == null) continue;
+
+            buttons[index].image.color = new Color(
+                originalColors[index].r,
+                originalColors[index].g,
+                originalColors[index].b,
+                1f
+            );
+
+            buttons[index].transform.localScale = originalScales[index] * sequenceScale;
+
             yield return new WaitForSeconds(flashTime);
 
-            buttons[index].image.color = originalColors[index];
+            buttons[index].image.color = new Color(
+                originalColors[index].r,
+                originalColors[index].g,
+                originalColors[index].b,
+                dimAlpha
+            );
+
+            buttons[index].transform.localScale = originalScales[index];
+
             yield return new WaitForSeconds(timeBetweenFlashes);
         }
+
+        ResetAllButtonsVisuals();
     }
 
     void PlayerPressed(int buttonIndex)
     {
         if (gameEnded) return;
+        if (IsGamePausedForCalibration()) return;
         if (!playerTurn) return;
+        if (sequence.Count == 0) return;
+        if (playerIndex < 0 || playerIndex >= sequence.Count) return;
 
+        PlayMysterySound();
         StartCoroutine(BounceButton(buttonIndex));
 
         bool isFocused = GetFocusState();
         bool isCorrectButton = buttonIndex == sequence[playerIndex];
 
-        if (isCorrectButton)
+        if (!isFocused)
         {
-            if (isFocused)
-                focusedCorrectAttempts++;
-            else
+            if (isCorrectButton)
+            {
                 unfocusedCorrectAttempts++;
 
+                if (infoText != null)
+                    infoText.text = "Correct, but not focused";
+            }
+            else
+            {
+                unfocusedWrongAttempts++;
+
+                if (infoText != null)
+                    infoText.text = "Wrong while unfocused";
+            }
+
+            StartCoroutine(PlayWrongSoundDelayed());
+
+            playerTurn = false;
+            SetButtonsInteractable(false);
+            ResetAllButtonsVisuals();
+
+            SaveGame4Report();
+            UpdateScoreText();
+
+            StartCoroutine(RestartRoundAfterUnfocusedAttempt());
+            return;
+        }
+
+        if (isCorrectButton)
+        {
+            focusedCorrectAttempts++;
             playerIndex++;
 
             if (playerIndex >= sequence.Count)
@@ -205,35 +352,44 @@ public class Game4Manager : MonoBehaviour
                 correctCount++;
                 currentStreak++;
 
+                StartCoroutine(PlayCorrectSoundDelayed());
+
                 if (currentStreak > bestStreak)
                     bestStreak = currentStreak;
 
                 if (infoText != null)
-                    infoText.text = isFocused ? "Correct!" : "Correct, but unfocused";
+                    infoText.text = "Correct!";
 
                 playerTurn = false;
                 UpdateScoreText();
+                SaveGame4Report();
 
                 StartCoroutine(NextRoundDelay());
+            }
+            else
+            {
+                if (infoText != null)
+                    infoText.text = "Good! Continue";
+
+                SaveGame4Report();
             }
         }
         else
         {
             wrongCount++;
             currentStreak = 0;
+            focusedWrongAttempts++;
 
-            if (isFocused)
-                focusedWrongAttempts++;
-            else
-                unfocusedWrongAttempts++;
+            StartCoroutine(PlayWrongSoundDelayed());
 
             if (infoText != null)
-                infoText.text = isFocused ? "Wrong! Game Over" : "Wrong while unfocused";
+                infoText.text = "Wrong! Game Over";
 
             playerTurn = false;
             gameEnded = true;
 
             SetButtonsInteractable(false);
+            ResetAllButtonsVisuals();
             UpdateScoreText();
             SaveGame4Report();
 
@@ -244,6 +400,44 @@ public class Game4Manager : MonoBehaviour
         }
 
         UpdateScoreText();
+    }
+
+    IEnumerator RestartRoundAfterUnfocusedAttempt()
+    {
+        yield return new WaitForSeconds(1f);
+
+        if (!gameEnded && !IsGamePausedForCalibration())
+            StartCoroutine(StartNewRound());
+    }
+
+    void PlayMysterySound()
+    {
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayMysteryAlert();
+    }
+
+    void PlayCorrectSound()
+    {
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayCorrect();
+    }
+
+    void PlayWrongSound()
+    {
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayWrong();
+    }
+
+    IEnumerator PlayCorrectSoundDelayed()
+    {
+        yield return new WaitForSeconds(0.12f);
+        PlayCorrectSound();
+    }
+
+    IEnumerator PlayWrongSoundDelayed()
+    {
+        yield return new WaitForSeconds(0.12f);
+        PlayWrongSound();
     }
 
     IEnumerator BounceButton(int index)
@@ -279,19 +473,17 @@ public class Game4Manager : MonoBehaviour
     IEnumerator NextRoundDelay()
     {
         SetButtonsInteractable(false);
+
         yield return new WaitForSeconds(1f);
 
-        if (!gameEnded)
+        if (!gameEnded && !IsGamePausedForCalibration())
             StartCoroutine(StartNewRound());
     }
 
     void UpdateScoreText()
     {
         if (scoreText != null)
-        {
-            scoreText.text =
-                "Correct: " + focusedCorrectAttempts ;
-        }
+            scoreText.text = "Score: " + correctCount;
     }
 
     void SetButtonsInteractable(bool value)
@@ -300,11 +492,6 @@ public class Game4Manager : MonoBehaviour
         if (blueButton != null) blueButton.interactable = value;
         if (greenButton != null) greenButton.interactable = value;
         if (yellowButton != null) yellowButton.interactable = value;
-    }
-    public void BackToMainMenu()
-    {
-        SaveGame4Report();
-        SceneManager.LoadScene("MainMenu");
     }
 
     void SaveGame4Report()
@@ -331,12 +518,20 @@ public class Game4Manager : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
+    public void EndSession()
+    {
+        EndGame();
+    }
+
     void EndGame()
     {
+        if (gameEnded) return;
+
         gameEnded = true;
         playerTurn = false;
         SetButtonsInteractable(false);
         StopAllCoroutines();
+        ResetAllButtonsVisuals();
 
         SaveGame4Report();
 
@@ -345,11 +540,6 @@ public class Game4Manager : MonoBehaviour
 
         if (playAgainButton != null)
             playAgainButton.gameObject.SetActive(true);
-        if (resultPopup != null)
-            resultPopup.SetActive(true);
-
-        if (resultTitleText != null)
-            resultTitleText.text = "Session Complete";
 
         Debug.Log("=== GAME 4 SUMMARY ===");
         Debug.Log("Correct: " + correctCount);
@@ -362,8 +552,27 @@ public class Game4Manager : MonoBehaviour
         Debug.Log("Focused Time: " + focusedTime.ToString("F2"));
         Debug.Log("Unfocused Time: " + unfocusedTime.ToString("F2"));
     }
+
+    void OnApplicationPause(bool pause)
+    {
+        if (pause)
+            SaveGame4Report();
+    }
+
+    void OnApplicationQuit()
+    {
+        SaveGame4Report();
+    }
+
     public void BackToGames()
-{
-    SceneManager.LoadScene("GameSelection");
-}
+    {
+        SaveGame4Report();
+        SceneManager.LoadScene("GameSelection");
+    }
+
+    public void BackToMainMenu()
+    {
+        SaveGame4Report();
+        SceneManager.LoadScene("MainMenu");
+    }
 }

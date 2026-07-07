@@ -1,151 +1,232 @@
-# Attention Learning App
+\# Real-Time Attention Adaptive Mobile Learning App for Children Using Computer Vision
 
-Çocuklarda dikkat becerilerini desteklemek ve oyun içi dikkat performansını takip etmek için geliştirilen Unity tabanlı mobil uygulama prototipi.
 
-Uygulamada dikkat mini oyunları, focused / unfocused durum takibi, skor sistemi ve ebeveyn rapor paneli bulunmaktadır.
 
----
+\## Project Description
 
-## Projeyi Açma
 
-### 1. Repository’yi indir
 
-GitHub Desktop ile:
+This project is a Unity-based mobile learning application designed for children. The application includes four attention-based mini-games and a parent panel that displays daily and weekly performance reports.
+
+
+
+The main purpose of the project is to support attention monitoring during gameplay. The system uses attention states such as \*\*Focused\*\* and \*\*Not Focused\*\* to control the scoring logic in the games. The application also collects gameplay data and presents the results in the parent panel.
+
+
+
+\## Team Members
+
+
+
+\* Merve Çiftçi
+
+\* Emirhan Türk
+
+
+
+\## Unity Version
+
+
+
+Unity 2022.3.62f3
+
+
+
+Please open the project with Unity 2022.3.62f3 or a compatible Unity 2022 LTS version.
+
+
+
+\## How to Open the Project
+
+
+
+1\. Download the zip file.
+
+2\. Extract the zip file to a folder.
+
+3\. Open Unity Hub.
+
+4\. Click \*\*Add\*\* or \*\*Open project from disk\*\*.
+
+5\. Select the extracted project folder.
+
+6\. Wait for Unity to import the project files.
+
+&#x20;  The first opening may take some time because Unity will recreate the Library folder.
+
+7\. Open the main scene from:
+
+
 
 ```text
-File > Clone Repository > attention-learning-app
 
-veya terminal ile:
+Assets/Scenes/MainMenu.unity
 
-git clone https://github.com/magrikola/attention-learning-app.git
-2. Unity Hub ile aç
+```
 
-Unity Hub üzerinden:
 
-Add > Add project from disk
 
-Clone edilen proje klasörünü seç.
+8\. Press the \*\*Play\*\* button in the Unity Editor.
 
-Seçilen klasörün içinde şu klasörler bulunmalıdır:
 
-Assets/
-Packages/
-ProjectSettings/
-3. Unity versiyonunu kontrol et
 
-Projeyi açmadan önce Unity versiyonunu kontrol et:
+\## Main Scenes
 
-ProjectSettings/ProjectVersion.txt
 
-Mümkünse projeyi bu dosyada yazan Unity versiyonu ile aç. (2022.3.62f1)
 
-İlk açılışta Unity Library klasörünü yeniden oluşturacağı için import işlemi birkaç dakika sürebilir.
+The project contains the following main scenes:
 
-Gerekli Paketler
 
-Projede temel olarak Unity UI ve TextMeshPro kullanılmaktadır.
 
-AR Foundation çalışmaları için Package Manager üzerinden aşağıdaki paketler kontrol edilmelidir:
+```text
 
-AR Foundation
-XR Plugin Management
-ARCore XR Plugin
-
-Android AR testi için:
-
-Edit > Project Settings > XR Plug-in Management > Android > ARCore
-
-ARCore aktif edilmelidir.
-
-Git Çalışma Düzeni
-
-Lütfen doğrudan main branch üzerinde çalışmayın.
-
-Yeni özellikler için ayrı branch açılması önerilir:
-
-ar-foundation
-model-training
-ui-polish
-
-Örnek:
-
-git checkout -b ar-foundation
-
-Değişiklik sonrası:
-
-git add .
-git commit -m "Add AR Foundation setup"
-git push origin ar-foundation
-Büyük Dosyalar
-
-Aşağıdaki klasör ve dosyalar GitHub’a eklenmemelidir:
-
-Library/
-Temp/
-Obj/
-Logs/
-Build/
-Builds/
-*.apk
-*.aab
-*.pt
-*.onnx
-*.tflite
-*.h5
-
-Dataset, eğitilmiş model dosyaları ve build çıktıları Google Drive gibi harici bir depolama alanı üzerinden paylaşılmalıdır.
-
-Ana Özellikler
-Mobil dikkat mini oyunları
-Focused / unfocused durum takibi
-Skor ve süre sistemi
-Günlük / haftalık ebeveyn raporu
-Attention Quality ve Advanced Attention metrikleri
-Demo amaçlı focus toggle sistemi
-Ana Sahneler
 MainMenu
+
 GameSelection
+
 Game1
+
 Game2
+
 Game3
+
 Game4
+
 ParentPanel
 
-Sahneler Build Settings içinde görünmüyorsa:
+```
 
-File > Build Settings > Add Open Scenes
-Not
 
-Bu uygulamadaki dikkat skorları klinik tanı amacı taşımaz. Skorlar yalnızca oyun içi dikkat performansını özetlemek için kullanılmaktadır.
-## Current AR / Attention Integration Status
 
-The project currently uses a provider-based attention architecture.
+The application starts from the \*\*MainMenu\*\* scene.
 
-Implemented components:
-- AR Foundation setup
-- ARCore enabled for Android
-- ARTestScene created with AR Session and XR Origin
-- AttentionSystemManager added
-- IAttentionProvider interface added
-- FakeAttentionProvider added for simulation/testing
-- AttentionBridgeManager added
-- Game1, Game2, Game3 and Game4 updated to read attention state through AttentionSystemManager
-- Session complete popup and Back to Games navigation added to all games
 
-Current limitation:
-- Real camera-based or ML-based attention detection is not connected yet.
-- The current prototype uses simulated/fake attention state.
-- Future ML or camera result should be connected by creating a new provider such as CameraAttentionProvider or MLAttentionProvider.
-- Android device testing should be performed when a compatible device is available.
 
-Suggested ML integration flow:
+\## How to Run the Application in Unity Editor
 
-Camera / ML Model
-↓
-MLAttentionProvider
-↓
-AttentionSystemManager
-↓
-Games
-↓
-ReportDataManager / Parent Panel
+
+
+1\. Open the project in Unity.
+
+2\. Open the \*\*MainMenu\*\* scene.
+
+3\. Press the \*\*Play\*\* button.
+
+4\. Use the main menu to navigate between the game selection screen, mini-games, and parent panel.
+
+
+
+\## How to Build for Android
+
+
+
+1\. Open the project in Unity.
+
+2\. Go to:
+
+
+
+```text
+
+File > Build Settings
+
+```
+
+
+
+3\. Select \*\*Android\*\* as the target platform.
+
+4\. Click \*\*Switch Platform\*\* if Android is not already selected.
+
+5\. Make sure the required scenes are added to \*\*Scenes In Build\*\*.
+
+6\. Click \*\*Build\*\* or \*\*Build and Run\*\*.
+
+7\. Install the generated APK file on an Android device.
+
+
+
+\## Required Packages
+
+
+
+This project uses Unity packages including:
+
+
+
+\* TextMeshPro
+
+\* AR Foundation
+
+\* ARCore XR Plugin
+
+
+
+If Unity asks to restore or install packages, please allow Unity to complete the package restoration process through Package Manager.
+
+
+
+\## Important Notes
+
+
+
+\* The following folders are not included in the zip file because Unity automatically recreates them:
+
+
+
+```text
+
+Library
+
+Temp
+
+Obj
+
+Logs
+
+Build
+
+Builds
+
+.vs
+
+```
+
+
+
+\* The first project opening may take a few minutes.
+
+\* If Unity asks to reimport assets or restore packages, please allow the process to finish.
+
+\* The parent panel displays daily and weekly reports based on the gameplay data collected during the mini-games.
+
+\* The application should be started from the \*\*MainMenu\*\* scene.
+
+
+
+\## Recommended Project Folder Structure
+
+
+
+After extracting the zip file, the project folder should include:
+
+
+
+```text
+
+Assets
+
+Packages
+
+ProjectSettings
+
+README.md
+
+```
+
+
+
+These folders are enough to open and run the Unity project.
+
+
+
